@@ -11,7 +11,7 @@ namespace Hero3Control
 {
     public class Hero3ControlService : IVideoCameraControlService
     {
-        protected string controlFormat = "http://{0}/{1}/{2}t={3}&p={4}";
+        protected string controlFormat = "http://{0}/{1}/{2}?t={3}&p={4}";
         protected string videosFormat = "http://{0}:8080/videos/DCIM/100GOPRO/";
         protected GoProConfig config = null;
 
@@ -27,8 +27,9 @@ namespace Hero3Control
             {
                 try
                 {
-                    webClient.DownloadString(string.Format(controlFormat, config.IpAddress, "bacpac", "SH",
-                                                           config.Password, "%01"));
+                    var url = string.Format(controlFormat, config.IpAddress, "bacpac", "SH",
+                                            config.Password, "%01");
+                    webClient.DownloadString(url);
                 }
                 catch (WebException ex)
                 {
@@ -44,8 +45,9 @@ namespace Hero3Control
             {
                 try
                 {
-                    webClient.DownloadString(string.Format(controlFormat, config.IpAddress, "bacpac", "SH",
-                                                           config.Password, "%00"));
+                    var url = string.Format(controlFormat, config.IpAddress, "bacpac", "SH",
+                                            config.Password, "%00");
+                    webClient.DownloadString(url);
                 }
                 catch (WebException ex)
                 {
@@ -57,8 +59,12 @@ namespace Hero3Control
 
         public void RecordForSeconds(int seconds)
         {
+            if (seconds < 5)
+            {
+                throw new ArgumentOutOfRangeException("Minimum 5s recording time.");
+            }
             StartRecording();
-            System.Threading.Thread.Sleep(seconds*1000);
+            System.Threading.Thread.Sleep((seconds+1)*1000);
             try
             {
                 StopRecording();
@@ -106,7 +112,7 @@ namespace Hero3Control
         public Stream GetLastFile()
         {
             var files = GetFileList();
-            var file = files.Last(t => t.Name.EndsWith("MP4"));
+            var file = files.OrderBy(t=> t.CreatedOn).Last(t => t.Name.EndsWith("MP4"));
             using (var wc = new WebClient())
             {
                 return wc.OpenRead(string.Format(videosFormat, config.IpAddress) + "/" + file.Name);
