@@ -9,7 +9,6 @@ using HtmlAgilityPack;
 
 namespace Hero3Control
 {
-    
     public class Hero3ControlService : IVideoCameraControlService
     {
         protected string controlFormat = "http://{0}/{1}/{2}t={3}&p={4}";
@@ -70,38 +69,48 @@ namespace Hero3Control
             }
         }
 
-        public Dictionary<string, string> GetFileList()
+        public List<FileData> GetFileList()
         {
-            throw new NotImplementedException("working on this still");
+            var f = new List<FileData>();
+
             var fL = accessHttpPage(string.Empty);
             var doc = new HtmlDocument();
             doc.LoadHtml(fL);
 
             foreach (var row in doc.DocumentNode.SelectNodes("//tr"))
             {
-                var m = row.SelectNodes("//span[@class=\"date\"]");
-                var l = row.SelectSingleNode("//a[@class=\"link\"]");
+                var m = row.SelectNodes(".//span[@class=\"date\"]");
+                var l = row.SelectSingleNode(".//a[@class=\"link\"]");
                 if (m == null &&  l == null)
                 {
                     continue;
                 }
-
+                var p = row.SelectSingleNode(".//a[@class=\"link\"]").Attributes["href"];
+                var d = row.SelectSingleNode(".//span[@class=\"date\"]");
+                var s =row.SelectSingleNode(".//span[@class=\"size\"]");
+                var u = row.SelectSingleNode(".//span[@class=\"unit\"]");
+                    
                 var fd = new FileData
                     {
-                        Path = row.SelectSingleNode("//a[@class=\"link\"]").Attributes["href"].Value,
-                        CreatedOn = DateTime.Parse(row.SelectSingleNode("//span[@class=\"date\"]").InnerText),
-                        Size = row.SelectSingleNode("//span[@class=\"size\"]").InnerText,
-                        SizeUnits = row.SelectSingleNode("//span[@class=\"units\"]").InnerText
+                        Name = p.Value,
+                        CreatedOn = DateTime.Parse(d.InnerText),
+                        Size = s.InnerText,
+                        SizeUnits = u.InnerText
                     };
-                string bob = fd.Path;
+                f.Add(fd);
             }
 
-            return new Dictionary<string, string>();
+            return f;
         }
 
         public Stream GetLastFile()
         {
-            throw new NotImplementedException("working on this still");
+            var files = GetFileList();
+            var file = files.Last(t => t.Name.EndsWith("MP4"));
+            using (var wc = new WebClient())
+            {
+                return wc.OpenRead(string.Format(videosFormat, config.IpAddress) + "/" + file.Name);
+            }
             return null;
         }
         
@@ -118,7 +127,7 @@ namespace Hero3Control
 
     public class FileData
     {
-        public string Path { get; set; }
+        public string Name { get; set; }
         public DateTime CreatedOn { get; set; }
         public string Size { get; set; }
         public string SizeUnits { get; set; }
